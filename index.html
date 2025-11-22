@@ -1,0 +1,2190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exponenciais Complexas - Visualização 3D Interativa</title>
+    <meta name="description" content="Visualização interativa 3D das exponenciais complexas e funções trigonométricas">
+    <meta name="keywords" content="matemática, exponenciais complexas, trigonometria, visualização 3D">
+    
+    <!-- Preload critical resources -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" as="script">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --accent-red: #ff6b6b;
+            --accent-cyan: #4ecdc4;
+            --accent-yellow: #ffd93d;
+            --bg-dark: #0f0f23;
+            --bg-darker: #000000;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --shadow-light: rgba(0, 0, 0, 0.3);
+            --shadow-heavy: rgba(0, 0, 0, 0.4);
+            
+            /* Dark theme variables */
+            --theme-bg: radial-gradient(ellipse at center, var(--bg-dark) 0%, var(--bg-darker) 70%);
+            --theme-text: var(--text-primary);
+            --theme-panel-bg: var(--glass-bg);
+        }
+        
+        [data-theme="light"] {
+            --bg-dark: #f8f9fa;
+            --bg-darker: #e9ecef;
+            --glass-bg: rgba(0, 0, 0, 0.05);
+            --glass-border: rgba(0, 0, 0, 0.1);
+            --text-primary: #212529;
+            --text-secondary: rgba(33, 37, 41, 0.7);
+            --theme-bg: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            --theme-text: var(--text-primary);
+            --theme-panel-bg: rgba(255, 255, 255, 0.8);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: var(--theme-bg);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            overflow: hidden;
+            color: var(--theme-text);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        /* Improved background particles */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 107, 107, 0.2) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(78, 205, 196, 0.15) 0%, transparent 50%);
+            pointer-events: none;
+            animation: float 20s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { opacity: 0.3; transform: translateY(0px) rotate(0deg); }
+            50% { opacity: 0.6; transform: translateY(-10px) rotate(180deg); }
+        }
+        
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        /* Enhanced glass panel with better accessibility */
+        .glass-panel {
+            background: var(--theme-panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: 0 8px 32px var(--shadow-light);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+        
+        .glass-panel:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px var(--shadow-heavy);
+        }
+        
+        .glass-panel:focus-within {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+        
+        /* NEW: Options Button Styles */
+        #options-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            border: none;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: inherit;
+            animation: slideInLeft 0.8s ease-out;
+        }
+        
+        #options-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(102, 126, 234, 0.5);
+        }
+        
+        #options-button:active {
+            transform: translateY(-1px);
+        }
+        
+        #options-button.active {
+            background: linear-gradient(135deg, var(--accent-yellow) 0%, #f39c12 100%);
+            box-shadow: 0 8px 32px rgba(255, 217, 61, 0.4);
+        }
+        
+        /* NEW: Options Panel Styles */
+        #options-panel {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            z-index: 99;
+            max-width: 450px;
+            opacity: 0;
+            transform: translateY(-20px);
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        #options-panel.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: all;
+        }
+        
+        .tab-header {
+            display: flex;
+            background: var(--theme-panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px 16px 0 0;
+            overflow: hidden;
+        }
+        
+        .tab-button {
+            flex: 1;
+            padding: 16px 20px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .tab-button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--theme-text);
+        }
+        
+        .tab-button.active {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+        }
+        
+        .tab-button.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--accent-yellow);
+        }
+        
+        .tab-content {
+            background: var(--theme-panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-top: none;
+            border-radius: 0 0 24px 24px;
+            padding: 28px;
+            max-height: calc(100vh - 160px);
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary-color) transparent;
+        }
+        
+        .tab-content::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .tab-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .tab-content::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 3px;
+        }
+        
+        .tab-panel {
+            display: none;
+        }
+        
+        .tab-panel.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-50px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        /* Theme toggle button */
+        #theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 101;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 50px;
+            padding: 12px 20px;
+            color: var(--theme-text);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+        }
+        
+        #theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        /* Enhanced equation panel - now smaller and positioned better */
+        #equation-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 20px 32px;
+            z-index: 100;
+            animation: slideInUp 0.8s ease-out 0.4s both;
+            max-width: 600px;
+        }
+        
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translate(-50%, 50px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+        
+        /* Enhanced typography */
+        h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        /* Improved button system with better accessibility */
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            border: none;
+            color: white;
+            padding: 14px 24px;
+            border-radius: 16px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            min-width: 120px;
+            font-family: inherit;
+        }
+        
+        button:focus {
+            outline: 2px solid var(--accent-yellow);
+            outline-offset: 2px;
+        }
+        
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s;
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:hover::before {
+            left: 100%;
+        }
+        
+        button:active {
+            transform: translateY(-1px);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--accent-red) 0%, #ee5a24 100%);
+        }
+        
+        .btn-secondary:hover {
+            box-shadow: 0 10px 25px rgba(255, 107, 107, 0.4);
+        }
+        
+        .btn-function {
+            background: linear-gradient(135deg, var(--accent-cyan) 0%, #44a08d 100%);
+            margin-bottom: 16px;
+            width: 100%;
+        }
+        
+        .btn-function:hover {
+            box-shadow: 0 10px 25px rgba(78, 205, 196, 0.4);
+        }
+        
+        .btn-function.active {
+            background: linear-gradient(135deg, var(--accent-yellow) 0%, #f39c12 100%);
+            box-shadow: 0 0 20px rgba(255, 217, 61, 0.5);
+        }
+        
+        .btn-function.active:hover {
+            box-shadow: 0 10px 25px rgba(255, 217, 61, 0.6);
+        }
+        
+        /* Enhanced slider with better UX */
+        .slider-container {
+            margin: 20px 0;
+        }
+        
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .slider-value {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-family: 'Monaco', monospace;
+            font-size: 13px;
+            min-width: 60px;
+            text-align: center;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+        
+        input[type="range"]:focus {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        /* Enhanced equation display */
+        .equation {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 16px;
+            text-align: center;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 18px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+            user-select: text;
+        }
+        
+        .equation::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+        }
+        
+        /* Improved legend with animations */
+        .legend {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-top: 24px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+        }
+        
+        .legend-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(4px);
+        }
+        
+        .color-indicator {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            position: relative;
+            box-shadow: 0 0 15px currentColor;
+            animation: pulse 2s infinite;
+            flex-shrink: 0;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        
+        .legend-text {
+            font-size: 14px;
+            font-weight: 500;
+            flex: 1;
+        }
+        
+        /* Enhanced values display */
+        .values-grid {
+            display: grid;
+            gap: 16px;
+            margin-top: 20px;
+        }
+        
+        .value-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .value-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .value-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        
+        .value-display {
+            font-family: 'Monaco', monospace;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--theme-text);
+            user-select: text;
+        }
+        
+        /* Enhanced tips section */
+        .tips {
+            margin-top: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(78, 205, 196, 0.1) 0%, rgba(255, 107, 107, 0.1) 100%);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .tip-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+        }
+        
+        .tip-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .tip-emoji {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        
+        /* Loading and error states */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: rgba(255, 107, 107, 0.1);
+            border: 1px solid rgba(255, 107, 107, 0.3);
+            color: #ff6b6b;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 16px 0;
+            font-size: 14px;
+        }
+        
+        /* Enhanced responsive design */
+        @media (max-width: 1024px) {
+            #options-panel {
+                max-width: 350px;
+            }
+            
+            .tab-content {
+                padding: 20px;
+            }
+            
+            #equation-panel {
+                padding: 20px 28px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            #options-panel {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                top: auto;
+                max-width: none;
+                transform: translateY(100%);
+            }
+            
+            #options-panel.visible {
+                transform: translateY(0);
+            }
+            
+            .tab-header {
+                border-radius: 0;
+            }
+            
+            .tab-content {
+                border-radius: 0;
+                max-height: 50vh;
+            }
+            
+            #equation-panel {
+                display: none; /* Hide on mobile to save space */
+            }
+            
+            #options-button {
+                bottom: 20px;
+                top: auto;
+                left: 20px;
+            }
+            
+            .btn-group {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+                min-width: auto;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .tab-content {
+                padding: 16px;
+            }
+            
+            h3 {
+                font-size: 16px;
+            }
+            
+            .equation {
+                font-size: 16px;
+                padding: 16px;
+            }
+        }
+        
+        /* Accessibility improvements */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+            
+            .color-indicator {
+                animation: none;
+            }
+            
+            body::before {
+                animation: none;
+            }
+        }
+        
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+            .glass-panel {
+                background: rgba(0, 0, 0, 0.9);
+                border: 2px solid white;
+            }
+            
+            button {
+                border: 2px solid white;
+            }
+        }
+        
+        /* Print styles */
+        @media print {
+            body {
+                background: white;
+                color: black;
+            }
+            
+            .glass-panel {
+                background: white;
+                border: 1px solid black;
+                box-shadow: none;
+            }
+            
+            #container canvas {
+                display: none;
+            }
+        }
+        
+        /* Additional utility classes */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        
+        .glow {
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow {
+            from { box-shadow: 0 0 10px rgba(255, 255, 255, 0.2); }
+            to { box-shadow: 0 0 20px rgba(255, 255, 255, 0.4); }
+        }
+        
+        /* Performance optimizations */
+        .glass-panel {
+            will-change: transform;
+        }
+        
+        button {
+            will-change: transform;
+        }
+        
+        .color-indicator {
+            will-change: transform, opacity;
+        }
+    </style>
+</head>
+<body data-theme="dark">
+    <div id="container">
+        <!-- Theme Toggle -->
+        <button id="theme-toggle" aria-label="Alternar tema">
+            <span id="theme-icon">🌙</span> <span id="theme-text">Modo Claro</span>
+        </button>
+        
+        <!-- Loading Screen -->
+        <div id="loading-screen" class="glass-panel" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; padding: 40px;">
+            <div class="loading">
+                <div class="spinner"></div>
+                <span>Carregando visualização 3D...</span>
+            </div>
+        </div>
+        
+        <!-- NEW: Options Button -->
+        <button id="options-button" aria-label="Abrir opções">
+            ⚙️ <span>Opções</span>
+        </button>
+        
+        <!-- NEW: Options Panel (Hidden by default) -->
+        <div id="options-panel">
+            <!-- Tab Headers -->
+            <div class="tab-header">
+                <button class="tab-button active" data-tab="controls" aria-label="Controles">
+                    🎛️ Controles
+                </button>
+                <button class="tab-button" data-tab="info" aria-label="Informações">
+                    📊 Valores
+                </button>
+                <button class="tab-button" data-tab="help" aria-label="Ajuda">
+                    💡 Dicas
+                </button>
+            </div>
+            
+            <!-- Tab Content -->
+            <div class="tab-content">
+                <!-- Controls Tab -->
+                <div id="controls-tab" class="tab-panel active">
+                    <h3>🎛️ Controles de Animação</h3>
+                    
+                    <!-- Function Selection -->
+                    <div class="btn-group" style="flex-direction: column;">
+                        <button id="sinBtn" class="btn-function active" aria-pressed="true">
+                            📈 Função Seno
+                        </button>
+                        <button id="cosBtn" class="btn-function" aria-pressed="false">
+                            📊 Função Cosseno
+                        </button>
+                        <button id="tanBtn" class="btn-function" aria-pressed="false">
+                            📐 Função Tangente
+                        </button>
+                        <button id="exp1Btn" class="btn-function" aria-pressed="false">
+                            🔴 e^(jθ) - Exponencial Positiva
+                        </button>
+                        <button id="exp2Btn" class="btn-function" aria-pressed="false">
+                            🔵 e^(-jθ) - Exponencial Negativa
+                        </button>
+                    </div>
+                    
+                    <!-- Playback Controls -->
+                    <div class="btn-group">
+                        <button id="playPause" aria-label="Reproduzir ou pausar animação">
+                            <span id="playIcon">▶️</span> <span id="playText">Play</span>
+                        </button>
+                        <button id="reset" class="btn-secondary" aria-label="Reiniciar animação">
+                            🔄 Reiniciar
+                        </button>
+                    </div>
+                    
+                    <!-- Enhanced Speed Control -->
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Velocidade da Animação</span>
+                            <span class="slider-value"><span id="speedValue">1.0</span>×</span>
+                        </div>
+                        <input type="range" id="speed" min="0.1" max="5" step="0.1" value="1" 
+                               aria-label="Controle de velocidade da animação">
+                    </div>
+                    
+                    <!-- New: Amplitude Control -->
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Amplitude</span>
+                            <span class="slider-value"><span id="amplitudeValue">1.0</span></span>
+                        </div>
+                        <input type="range" id="amplitude" min="0.5" max="3" step="0.1" value="1" 
+                               aria-label="Controle de amplitude">
+                    </div>
+                    
+                    <!-- New: Frequency Control -->
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Frequência</span>
+                            <span class="slider-value"><span id="frequencyValue">1.0</span></span>
+                        </div>
+                        <input type="range" id="frequency" min="0.5" max="3" step="0.1" value="1" 
+                               aria-label="Controle de frequência">
+                    </div>
+                    
+                    <!-- Enhanced Legend -->
+                    <div class="legend">
+                        <div class="legend-item" tabindex="0" role="button" aria-label="Alternar visibilidade da exponencial positiva">
+                            <div class="color-indicator" style="background: var(--accent-red); color: var(--accent-red);"></div>
+                            <div>
+                                <div class="legend-text">e^(iθ) - Exponencial Positiva</div>
+                                <div style="font-size: 12px; color: var(--text-secondary);">Gira no sentido anti-horário</div>
+                            </div>
+                        </div>
+                        <div class="legend-item" tabindex="0" role="button" aria-label="Alternar visibilidade da exponencial negativa">
+                            <div class="color-indicator" style="background: var(--accent-cyan); color: var(--accent-cyan);"></div>
+                            <div>
+                                <div class="legend-text">e^(-iθ) - Exponencial Negativa</div>
+                                <div style="font-size: 12px; color: var(--text-secondary);">Gira no sentido horário</div>
+                            </div>
+                        </div>
+                        <div class="legend-item" tabindex="0" role="button" aria-label="Alternar visibilidade do resultado">
+                            <div class="color-indicator" style="background: var(--accent-yellow); color: var(--accent-yellow);"></div>
+                            <div>
+                                <div class="legend-text" id="resultLegendText">sen(θ) - Resultado Final</div>
+                                <div style="font-size: 12px; color: var(--text-secondary);" id="resultLegendDesc">Diferença das exponenciais</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- New: Export Controls -->
+                    <div class="btn-group" style="margin-top: 24px;">
+                        <button id="exportImage" class="btn-secondary" style="min-width: auto; flex: 1;">
+                            📸 Capturar
+                        </button>
+                        <button id="fullscreen" class="btn-secondary" style="min-width: auto; flex: 1;">
+                            🔍 Tela Cheia
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Info Tab -->
+                <div id="info-tab" class="tab-panel">
+                    <h3>📊 Valores em Tempo Real</h3>
+                    
+                    <div class="values-grid">
+                        <div class="value-item">
+                            <div class="value-label">Ângulo θ</div>
+                            <div class="value-display" id="angleValue">0.00°</div>
+                        </div>
+                        
+                        <div class="value-item">
+                            <div class="value-label">e^(iθ)</div>
+                            <div class="value-display" id="exp1Value">1.00 + 0.00i</div>
+                        </div>
+                        
+                        <div class="value-item">
+                            <div class="value-label">e^(-iθ)</div>
+                            <div class="value-display" id="exp2Value">1.00 + 0.00i</div>
+                        </div>
+                        
+                        <div class="value-item glow">
+                            <div class="value-label" id="resultLabel">sen(θ)</div>
+                            <div class="value-display" id="resultValue">0.00</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Help Tab -->
+                <div id="help-tab" class="tab-panel">
+                    <h3>💡 Dicas e Atalhos</h3>
+                    
+                    <!-- Enhanced Tips -->
+                    <div class="tips">
+                        <div class="tip-item">
+                            <span class="tip-emoji">🎯</span>
+                            <span id="tip1">Em θ = 0°, sen(0) = 0 e cos(0) = 1!</span>
+                        </div>
+                        <div class="tip-item">
+                            <span class="tip-emoji">🌀</span>
+                            <span>As exponenciais giram em direções opostas no plano complexo</span>
+                        </div>
+                        <div class="tip-item">
+                            <span class="tip-emoji">✨</span>
+                            <span>Arraste o mouse para rotacionar a visualização 3D</span>
+                        </div>
+                        <div class="tip-item">
+                            <span class="tip-emoji">⚡</span>
+                            <span>Use a roda do mouse para fazer zoom</span>
+                        </div>
+                        <div class="tip-item">
+                            <span class="tip-emoji">🎨</span>
+                            <span>Clique nos itens da legenda para alternar visibilidade</span>
+                        </div>
+                        <div class="tip-item">
+                            <span class="tip-emoji">🔢</span>
+                            <span>Use teclas 1-5 para alternar entre funções rapidamente</span>
+                        </div>
+                        <div class="tip-item">
+                            <span class="tip-emoji">🔴</span>
+                            <span>Visualize e^(jθ) e e^(-jθ) individualmente nos novos modos</span>
+                        </div>
+                        <div class="tip-item">
+                            <span class="tip-emoji">⌨️</span>
+                            <span>Pressione Espaço para pausar/reproduzir, R para reiniciar</span>
+                        </div>
+                        <div class="tip-item">
+                            <span class="tip-emoji">🖱️</span>
+                            <span>Clique no botão 'Opções' para alternar entre controles, valores e dicas</span>
+                        </div>
+                        <div class="tip-item">
+                            <span class="tip-emoji">📏</span>
+                            <span>Os eixos aumentam automaticamente quando você se afasta da função</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Enhanced Equation Panel -->
+        <div id="equation-panel" class="glass-panel">
+            <div class="equation" id="equationDisplay" role="img" aria-label="Equação matemática atual">
+                sen(θ) = (e^(iθ) - e^(-iθ)) / 2i
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Enhanced Application Class with better organization
+        class ComplexExponentialVisualizer {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.animationId = null;
+                
+                // Animation state
+                this.isPlaying = true;
+                this.time = 0;
+                this.speed = 1;
+                this.amplitude = 1;
+                this.frequency = 1;
+                this.currentFunction = 'sin';
+                
+                // NEW: Dynamic axis length based on camera distance
+                this.baseAxisLength = 15;
+                this.currentAxisLength = 15;
+                
+                // 3D Objects
+                this.objects = {
+                    exp1Curve: null,
+                    exp2Curve: null,
+                    resultCurve: null,
+                    exp1Point: null,
+                    exp2Point: null,
+                    resultPoint: null,
+                    exp1Line: null,
+                    exp2Line: null,
+                    resultLine: null
+                };
+                
+                // Visibility toggles
+                this.visibility = {
+                    exp1: true,
+                    exp2: true,
+                    result: true
+                };
+                
+                // Mouse controls
+                this.mouseControls = {
+                    mouseDown: false,
+                    mouseX: 0,
+                    mouseY: 0
+                };
+                
+                // Theme
+                this.currentTheme = 'dark';
+                
+                // NEW: Options panel state
+                this.optionsPanelVisible = false;
+                
+                // Performance monitoring
+                this.performanceMonitor = {
+                    frameCount: 0,
+                    lastTime: performance.now(),
+                    fps: 60
+                };
+                
+                this.init();
+            }
+            
+            async init() {
+                try {
+                    await this.initScene();
+                    this.setupLighting();
+                    this.createAxes();
+                    this.createCurves();
+                    this.createPoints();
+                    this.createLines();
+                    this.createParticleSystem();
+                    this.setupControls();
+                    this.setupEventListeners();
+                    this.setupTabSystem();
+                    this.setupOptionsPanel(); // NEW: Setup options panel
+                    this.animate();
+                    this.hideLoadingScreen();
+                } catch (error) {
+                    this.showError('Erro ao inicializar a visualização: ' + error.message);
+                }
+            }
+            
+            async initScene() {
+                // Scene setup with improved configuration
+                this.scene = new THREE.Scene();
+                
+                // Enhanced background
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = 4;
+                canvas.height = 4;
+                const gradient = context.createLinearGradient(0, 0, 0, 4);
+                gradient.addColorStop(0, this.currentTheme === 'dark' ? '#0a0a0a' : '#f8f9fa');
+                gradient.addColorStop(0.5, this.currentTheme === 'dark' ? '#1a1a2e' : '#e9ecef');
+                gradient.addColorStop(1, this.currentTheme === 'dark' ? '#16213e' : '#dee2e6');
+                context.fillStyle = gradient;
+                context.fillRect(0, 0, 4, 4);
+                const texture = new THREE.CanvasTexture(canvas);
+                this.scene.background = texture;
+                
+                // Enhanced camera with better positioning
+                this.camera = new THREE.PerspectiveCamera(
+                    60, 
+                    window.innerWidth / window.innerHeight, 
+                    0.1, 
+                    1000
+                );
+                this.camera.position.set(18, 12, 18);
+                this.camera.lookAt(0, 0, 0);
+                
+                // Enhanced renderer with better quality settings
+                this.renderer = new THREE.WebGLRenderer({ 
+                    antialias: true, 
+                    alpha: true,
+                    powerPreference: "high-performance"
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                this.renderer.outputEncoding = THREE.sRGBEncoding;
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.2;
+                
+                document.getElementById('container').appendChild(this.renderer.domElement);
+            }
+            
+            setupLighting() {
+                // Clear existing lights
+                const lights = this.scene.children.filter(child => child.isLight);
+                lights.forEach(light => this.scene.remove(light));
+                
+                const intensity = this.currentTheme === 'dark' ? 1 : 0.8;
+                const ambientIntensity = this.currentTheme === 'dark' ? 0.4 : 0.6;
+                
+                // Ambient light
+                const ambientLight = new THREE.AmbientLight(0x404060, ambientIntensity);
+                this.scene.add(ambientLight);
+                
+                // Main directional light
+                const mainLight = new THREE.DirectionalLight(0xffffff, intensity);
+                mainLight.position.set(15, 20, 10);
+                mainLight.castShadow = true;
+                mainLight.shadow.mapSize.width = 2048;
+                mainLight.shadow.mapSize.height = 2048;
+                mainLight.shadow.camera.near = 0.1;
+                mainLight.shadow.camera.far = 50;
+                mainLight.shadow.camera.left = -20;
+                mainLight.shadow.camera.right = 20;
+                mainLight.shadow.camera.top = 20;
+                mainLight.shadow.camera.bottom = -20;
+                this.scene.add(mainLight);
+                
+                // Colored fill lights
+                const fillLight1 = new THREE.PointLight(0xff6b6b, 0.8 * intensity, 50);
+                fillLight1.position.set(-10, 5, 10);
+                this.scene.add(fillLight1);
+                
+                const fillLight2 = new THREE.PointLight(0x4ecdc4, 0.8 * intensity, 50);
+                fillLight2.position.set(10, 5, -10);
+                this.scene.add(fillLight2);
+                
+                // Rim light
+                const rimLight = new THREE.PointLight(0xffd93d, 0.6 * intensity, 30);
+                rimLight.position.set(0, 15, 0);
+                this.scene.add(rimLight);
+            }
+            
+            // NEW: Dynamic axis creation based on camera distance
+            createAxes(axisLength = null) {
+                // Remove existing axes
+                const axes = this.scene.children.filter(child => child.userData.isAxis);
+                axes.forEach(axis => this.scene.remove(axis));
+                
+                // Use provided length or calculate based on camera distance
+                if (axisLength === null) {
+                    const cameraDistance = this.camera.position.length();
+                    // Scale axis length based on camera distance (minimum 15, maximum 50)
+                    this.currentAxisLength = Math.max(15, Math.min(50, cameraDistance * 1.2));
+                } else {
+                    this.currentAxisLength = axisLength;
+                }
+                
+                const axisWidth = 0.1;
+                
+                const createAxis = (start, end, color, label) => {
+                    const geometry = new THREE.TubeGeometry(
+                        new THREE.CatmullRomCurve3([start, end]), 
+                        64, axisWidth, 8, false
+                    );
+                    const material = new THREE.MeshPhongMaterial({ 
+                        color: color,
+                        emissive: color,
+                        emissiveIntensity: 0.2,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    const axis = new THREE.Mesh(geometry, material);
+                    axis.userData.isAxis = true;
+                    this.scene.add(axis);
+                    
+                    this.addAxisLabel(label, end.x, end.y, end.z, color);
+                };
+                
+                createAxis(
+                    new THREE.Vector3(-this.currentAxisLength, 0, 0),
+                    new THREE.Vector3(this.currentAxisLength, 0, 0),
+                    0xff4757, 'Real'
+                );
+                
+                createAxis(
+                    new THREE.Vector3(0, -this.currentAxisLength, 0),
+                    new THREE.Vector3(0, this.currentAxisLength, 0),
+                    0x2ed573, 'Imaginário'
+                );
+                
+                createAxis(
+                    new THREE.Vector3(0, 0, -this.currentAxisLength),
+                    new THREE.Vector3(0, 0, this.currentAxisLength),
+                    0x3742fa, 'θ (ângulo)'
+                );
+            }
+            
+            addAxisLabel(text, x, y, z, color) {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = 256;
+                canvas.height = 128;
+                
+                context.clearRect(0, 0, 256, 128);
+                
+                // Enhanced text rendering with better contrast
+                context.font = 'bold 32px Inter';
+                context.fillStyle = this.currentTheme === 'dark' ? '#000000' : '#ffffff';
+                context.textAlign = 'center';
+                context.fillText(text, 129, 69); // Shadow
+                
+                context.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+                context.fillText(text, 128, 68);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.needsUpdate = true;
+                
+                const spriteMaterial = new THREE.SpriteMaterial({ 
+                    map: texture,
+                    transparent: true,
+                    alphaTest: 0.1
+                });
+                const sprite = new THREE.Sprite(spriteMaterial);
+                sprite.position.set(x * 1.1, y * 1.1, z * 1.1);
+                sprite.scale.set(3, 1.5, 1);
+                sprite.userData.isAxis = true;
+                this.scene.add(sprite);
+            }
+            
+            createCurves() {
+                const thetaRange = 4 * Math.PI;
+                const steps = 300;
+                const radius = 4;
+                const zScale = 2.5;
+                
+                // Remove existing curves
+                Object.values(this.objects).forEach(obj => {
+                    if (obj && obj.geometry) {
+                        this.scene.remove(obj);
+                        obj.geometry.dispose();
+                        obj.material.dispose();
+                    }
+                });
+                
+                // Create exp1 curve
+                const exp1Points = [];
+                for (let i = 0; i <= steps; i++) {
+                    const theta = (i / steps) * thetaRange;
+                    const real = Math.cos(theta * this.frequency) * radius * this.amplitude;
+                    const imag = Math.sin(theta * this.frequency) * radius * this.amplitude;
+                    exp1Points.push(new THREE.Vector3(real, imag, theta * zScale));
+                }
+                
+                const exp1Geometry = new THREE.TubeGeometry(
+                    new THREE.CatmullRomCurve3(exp1Points), 
+                    steps, 0.05, 8, false
+                );
+                const exp1Material = new THREE.MeshPhongMaterial({ 
+                    color: 0xff6b6b,
+                    emissive: 0xff6b6b,
+                    emissiveIntensity: 0.3,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                this.objects.exp1Curve = new THREE.Mesh(exp1Geometry, exp1Material);
+                this.objects.exp1Curve.castShadow = true;
+                this.objects.exp1Curve.visible = this.visibility.exp1;
+                this.scene.add(this.objects.exp1Curve);
+                
+                // Create exp2 curve
+                const exp2Points = [];
+                for (let i = 0; i <= steps; i++) {
+                    const theta = (i / steps) * thetaRange;
+                    const real = Math.cos(-theta * this.frequency) * radius * this.amplitude;
+                    const imag = Math.sin(-theta * this.frequency) * radius * this.amplitude;
+                    exp2Points.push(new THREE.Vector3(real, imag, theta * zScale));
+                }
+                
+                const exp2Geometry = new THREE.TubeGeometry(
+                    new THREE.CatmullRomCurve3(exp2Points), 
+                    steps, 0.05, 8, false
+                );
+                const exp2Material = new THREE.MeshPhongMaterial({ 
+                    color: 0x4ecdc4,
+                    emissive: 0x4ecdc4,
+                    emissiveIntensity: 0.3,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                this.objects.exp2Curve = new THREE.Mesh(exp2Geometry, exp2Material);
+                this.objects.exp2Curve.castShadow = true;
+                this.objects.exp2Curve.visible = this.visibility.exp2;
+                this.scene.add(this.objects.exp2Curve);
+                
+                this.updateResultCurve();
+            }
+            
+            updateResultCurve() {
+                if (this.objects.resultCurve) {
+                    this.scene.remove(this.objects.resultCurve);
+                    this.objects.resultCurve.geometry.dispose();
+                    this.objects.resultCurve.material.dispose();
+                }
+                
+                const thetaRange = 4 * Math.PI;
+                const steps = 300;
+                const radius = 4;
+                const zScale = 2.5;
+                
+                const resultPoints = [];
+                
+                if (this.currentFunction === 'exp1' || this.currentFunction === 'exp2') {
+                    // Para exponenciais, plotamos no plano complexo (Real vs Imaginário)
+                    for (let i = 0; i <= steps; i++) {
+                        const theta = (i / steps) * thetaRange;
+                        let real, imag;
+                        
+                        if (this.currentFunction === 'exp1') {
+                            real = Math.cos(theta * this.frequency) * radius * this.amplitude;
+                            imag = Math.sin(theta * this.frequency) * radius * this.amplitude;
+                        } else { // exp2
+                            real = Math.cos(-theta * this.frequency) * radius * this.amplitude;
+                            imag = Math.sin(-theta * this.frequency) * radius * this.amplitude;
+                        }
+                        
+                        resultPoints.push(new THREE.Vector3(real, imag, theta * zScale));
+                    }
+                } else {
+                    // Para funções trigonométricas, plotamos no plano θ vs f(θ)
+                    for (let i = 0; i <= steps; i++) {
+                        const theta = (i / steps) * thetaRange;
+                        let resultValue;
+                        
+                        switch (this.currentFunction) {
+                            case 'sin':
+                                resultValue = Math.sin(theta * this.frequency) * radius * this.amplitude;
+                                break;
+                            case 'cos':
+                                resultValue = Math.cos(theta * this.frequency) * radius * this.amplitude;
+                                break;
+                            case 'tan':
+                                resultValue = Math.tan(theta * this.frequency) * radius * this.amplitude * 0.5;
+                                // Clamp tangent to prevent extreme values
+                                resultValue = Math.max(-radius * 2, Math.min(radius * 2, resultValue));
+                                break;
+                            default:
+                                resultValue = Math.sin(theta * this.frequency) * radius * this.amplitude;
+                        }
+                        
+                        resultPoints.push(new THREE.Vector3(theta * zScale, resultValue, 0));
+                    }
+                }
+                
+                const resultGeometry = new THREE.TubeGeometry(
+                    new THREE.CatmullRomCurve3(resultPoints), 
+                    steps, 0.08, 8, false
+                );
+                
+                // Escolher cor baseada na função
+                let color;
+                switch (this.currentFunction) {
+                    case 'exp1':
+                        color = 0xff6b6b; // Vermelho para e^(jθ)
+                        break;
+                    case 'exp2':
+                        color = 0x4ecdc4; // Ciano para e^(-jθ)
+                        break;
+                    default:
+                        color = 0xffd93d; // Amarelo para funções trigonométricas
+                }
+                
+                const resultMaterial = new THREE.MeshPhongMaterial({ 
+                    color: color,
+                    emissive: color,
+                    emissiveIntensity: 0.4
+                });
+                this.objects.resultCurve = new THREE.Mesh(resultGeometry, resultMaterial);
+                this.objects.resultCurve.castShadow = true;
+                this.objects.resultCurve.visible = this.visibility.result;
+                this.scene.add(this.objects.resultCurve);
+            }
+            
+            createPoints() {
+                // Remove existing points
+                if (this.objects.exp1Point) this.scene.remove(this.objects.exp1Point);
+                if (this.objects.exp2Point) this.scene.remove(this.objects.exp2Point);
+                if (this.objects.resultPoint) this.scene.remove(this.objects.resultPoint);
+                
+                // Create enhanced points with halos
+                const createPoint = (color, size = 0.4) => {
+                    const geometry = new THREE.SphereGeometry(size, 32, 32);
+                    const material = new THREE.MeshPhongMaterial({ 
+                        color: color,
+                        emissive: color,
+                        emissiveIntensity: 0.5,
+                        shininess: 100
+                    });
+                    const point = new THREE.Mesh(geometry, material);
+                    point.castShadow = true;
+                    point.receiveShadow = true;
+                    
+                    // Add halo effect
+                    const haloGeometry = new THREE.RingGeometry(size * 2, size * 3, 32);
+                    const haloMaterial = new THREE.MeshBasicMaterial({ 
+                        color: color,
+                        transparent: true,
+                        opacity: 0.3,
+                        side: THREE.DoubleSide
+                    });
+                    const halo = new THREE.Mesh(haloGeometry, haloMaterial);
+                    point.add(halo);
+                    
+                    return point;
+                };
+                
+                this.objects.exp1Point = createPoint(0xff6b6b);
+                this.objects.exp1Point.visible = this.visibility.exp1;
+                this.scene.add(this.objects.exp1Point);
+                
+                this.objects.exp2Point = createPoint(0x4ecdc4);
+                this.objects.exp2Point.visible = this.visibility.exp2;
+                this.scene.add(this.objects.exp2Point);
+                
+                this.objects.resultPoint = createPoint(0xffd93d, 0.5);
+                this.objects.resultPoint.visible = this.visibility.result;
+                this.scene.add(this.objects.resultPoint);
+            }
+            
+            createLines() {
+                // Remove existing lines
+                if (this.objects.exp1Line) this.scene.remove(this.objects.exp1Line);
+                if (this.objects.exp2Line) this.scene.remove(this.objects.exp2Line);
+                if (this.objects.resultLine) this.scene.remove(this.objects.resultLine);
+                
+                const createLine = (color, width = 0.02) => {
+                    const geometry = new THREE.TubeGeometry(
+                        new THREE.CatmullRomCurve3([
+                            new THREE.Vector3(0, 0, 0),
+                            new THREE.Vector3(0, 0, 0)
+                        ]), 
+                        10, width, 8, false
+                    );
+                    const material = new THREE.MeshPhongMaterial({ 
+                        color: color,
+                        emissive: color,
+                        emissiveIntensity: 0.3,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    return new THREE.Mesh(geometry, material);
+                };
+                
+                this.objects.exp1Line = createLine(0xff6b6b);
+                this.objects.exp1Line.visible = this.visibility.exp1;
+                this.scene.add(this.objects.exp1Line);
+                
+                this.objects.exp2Line = createLine(0x4ecdc4);
+                this.objects.exp2Line.visible = this.visibility.exp2;
+                this.scene.add(this.objects.exp2Line);
+                
+                this.objects.resultLine = createLine(0xffd93d, 0.03);
+                this.objects.resultLine.visible = this.visibility.result;
+                this.scene.add(this.objects.resultLine);
+            }
+            
+            createParticleSystem() {
+                // Enhanced particle system with better performance
+                const particleCount = window.innerWidth < 768 ? 100 : 200;
+                const particles = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+                const sizes = new Float32Array(particleCount);
+                
+                for (let i = 0; i < particleCount; i++) {
+                    positions[i * 3] = (Math.random() - 0.5) * 50;
+                    positions[i * 3 + 1] = (Math.random() - 0.5) * 50;
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 50;
+                    
+                    const color = new THREE.Color();
+                    color.setHSL(Math.random(), 0.5, 0.5);
+                    colors[i * 3] = color.r;
+                    colors[i * 3 + 1] = color.g;
+                    colors[i * 3 + 2] = color.b;
+                    
+                    sizes[i] = Math.random() * 0.2 + 0.05;
+                }
+                
+                particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                particles.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                particles.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+                
+                const particleMaterial = new THREE.PointsMaterial({
+                    size: 0.1,
+                    transparent: true,
+                    opacity: 0.3,
+                    vertexColors: true,
+                    blending: THREE.AdditiveBlending,
+                    sizeAttenuation: true
+                });
+                
+                const particleSystem = new THREE.Points(particles, particleMaterial);
+                this.scene.add(particleSystem);
+            }
+            
+            // NEW: Setup options panel functionality
+            setupOptionsPanel() {
+                const optionsButton = document.getElementById('options-button');
+                const optionsPanel = document.getElementById('options-panel');
+                
+                optionsButton.addEventListener('click', () => {
+                    this.optionsPanelVisible = !this.optionsPanelVisible;
+                    
+                    if (this.optionsPanelVisible) {
+                        optionsPanel.classList.add('visible');
+                        optionsButton.classList.add('active');
+                        optionsButton.innerHTML = '✖️ <span>Fechar</span>';
+                    } else {
+                        optionsPanel.classList.remove('visible');
+                        optionsButton.classList.remove('active');
+                        optionsButton.innerHTML = '⚙️ <span>Opções</span>';
+                    }
+                    
+                    // Visual feedback
+                    optionsButton.style.transform = 'scale(0.95)';
+                    setTimeout(() => optionsButton.style.transform = '', 150);
+                });
+                
+                // Close panel when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (this.optionsPanelVisible && 
+                        !optionsPanel.contains(e.target) && 
+                        !optionsButton.contains(e.target)) {
+                        this.optionsPanelVisible = false;
+                        optionsPanel.classList.remove('visible');
+                        optionsButton.classList.remove('active');
+                        optionsButton.innerHTML = '⚙️ <span>Opções</span>';
+                    }
+                });
+            }
+            
+            // Tab System Setup
+            setupTabSystem() {
+                const tabButtons = document.querySelectorAll('.tab-button');
+                const tabPanels = document.querySelectorAll('.tab-panel');
+                
+                tabButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        const targetTab = button.getAttribute('data-tab');
+                        
+                        // Remove active class from all buttons and panels
+                        tabButtons.forEach(btn => btn.classList.remove('active'));
+                        tabPanels.forEach(panel => panel.classList.remove('active'));
+                        
+                        // Add active class to clicked button and corresponding panel
+                        button.classList.add('active');
+                        document.getElementById(targetTab + '-tab').classList.add('active');
+                        
+                        // Visual feedback
+                        button.style.transform = 'scale(0.95)';
+                        setTimeout(() => button.style.transform = '', 150);
+                    });
+                });
+            }
+            
+            switchFunction(newFunction) {
+                this.currentFunction = newFunction;
+                
+                // Update UI elements
+                const buttons = {
+                    sin: document.getElementById('sinBtn'),
+                    cos: document.getElementById('cosBtn'),
+                    tan: document.getElementById('tanBtn'),
+                    exp1: document.getElementById('exp1Btn'),
+                    exp2: document.getElementById('exp2Btn')
+                };
+                
+                // Reset all buttons
+                Object.values(buttons).forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.setAttribute('aria-pressed', 'false');
+                });
+                
+                // Activate selected button
+                buttons[newFunction].classList.add('active');
+                buttons[newFunction].setAttribute('aria-pressed', 'true');
+                
+                // Update equation and labels
+                const equations = {
+                    sin: 'sen(θ) = (e^(jθ) - e^(-jθ)) / 2j',
+                    cos: 'cos(θ) = (e^(jθ) + e^(-jθ)) / 2',
+                    tan: 'tan(θ) = sen(θ) / cos(θ)',
+                    exp1: 'e^(jθ) = cos(θ) + j·sen(θ)',
+                    exp2: 'e^(-jθ) = cos(θ) - j·sen(θ)'
+                };
+                
+                const labels = {
+                    sin: { text: 'sen(θ) - Resultado Final', desc: 'Diferença das exponenciais' },
+                    cos: { text: 'cos(θ) - Resultado Final', desc: 'Soma das exponenciais' },
+                    tan: { text: 'tan(θ) - Resultado Final', desc: 'Razão seno/cosseno' },
+                    exp1: { text: 'e^(jθ) - Exponencial Positiva', desc: 'Rotação anti-horária' },
+                    exp2: { text: 'e^(-jθ) - Exponencial Negativa', desc: 'Rotação horária' }
+                };
+                
+                const resultLabels = {
+                    sin: 'sen(θ)',
+                    cos: 'cos(θ)',
+                    tan: 'tan(θ)',
+                    exp1: 'e^(jθ)',
+                    exp2: 'e^(-jθ)'
+                };
+                
+                document.getElementById('equationDisplay').textContent = equations[newFunction];
+                document.getElementById('resultLabel').textContent = resultLabels[newFunction];
+                document.getElementById('resultLegendText').textContent = labels[newFunction].text;
+                document.getElementById('resultLegendDesc').textContent = labels[newFunction].desc;
+                
+                // Update result curve
+                this.updateResultCurve();
+            }
+            
+            toggleTheme() {
+                this.currentTheme = this.currentTheme === 'dark' ? 'light' : 'dark';
+                document.body.setAttribute('data-theme', this.currentTheme);
+                
+                const themeIcon = document.getElementById('theme-icon');
+                const themeText = document.getElementById('theme-text');
+                
+                if (this.currentTheme === 'dark') {
+                    themeIcon.textContent = '🌙';
+                    themeText.textContent = 'Modo Claro';
+                } else {
+                    themeIcon.textContent = '☀️';
+                    themeText.textContent = 'Modo Escuro';
+                }
+                
+                // Update 3D scene for new theme
+                this.setupLighting();
+                this.createAxes();
+            }
+            
+            toggleVisibility(type) {
+                this.visibility[type] = !this.visibility[type];
+                
+                const objects = {
+                    exp1: [this.objects.exp1Curve, this.objects.exp1Point, this.objects.exp1Line],
+                    exp2: [this.objects.exp2Curve, this.objects.exp2Point, this.objects.exp2Line],
+                    result: [this.objects.resultCurve, this.objects.resultPoint, this.objects.resultLine]
+                };
+                
+                objects[type].forEach(obj => {
+                    if (obj) obj.visible = this.visibility[type];
+                });
+            }
+            
+            setupControls() {
+                const elements = {
+                    playPause: document.getElementById('playPause'),
+                    reset: document.getElementById('reset'),
+                    speed: document.getElementById('speed'),
+                    amplitude: document.getElementById('amplitude'),
+                    frequency: document.getElementById('frequency'),
+                    themeToggle: document.getElementById('theme-toggle'),
+                    exportImage: document.getElementById('exportImage'),
+                    fullscreen: document.getElementById('fullscreen')
+                };
+                
+                // Function buttons
+                document.getElementById('sinBtn').addEventListener('click', () => this.switchFunction('sin'));
+                document.getElementById('cosBtn').addEventListener('click', () => this.switchFunction('cos'));
+                document.getElementById('tanBtn').addEventListener('click', () => this.switchFunction('tan'));
+                document.getElementById('exp1Btn').addEventListener('click', () => this.switchFunction('exp1'));
+                document.getElementById('exp2Btn').addEventListener('click', () => this.switchFunction('exp2'));
+                
+                // Playback controls
+                elements.playPause.addEventListener('click', () => this.togglePlayPause());
+                elements.reset.addEventListener('click', () => this.reset());
+                
+                // Sliders with improved feedback
+                elements.speed.addEventListener('input', (e) => {
+                    this.speed = parseFloat(e.target.value);
+                    document.getElementById('speedValue').textContent = this.speed.toFixed(1);
+                });
+                
+                elements.amplitude.addEventListener('input', (e) => {
+                    this.amplitude = parseFloat(e.target.value);
+                    document.getElementById('amplitudeValue').textContent = this.amplitude.toFixed(1);
+                    this.createCurves();
+                });
+                
+                elements.frequency.addEventListener('input', (e) => {
+                    this.frequency = parseFloat(e.target.value);
+                    document.getElementById('frequencyValue').textContent = this.frequency.toFixed(1);
+                    this.createCurves();
+                });
+                
+                // Theme toggle
+                elements.themeToggle.addEventListener('click', () => this.toggleTheme());
+                
+                // Export and fullscreen
+                elements.exportImage.addEventListener('click', () => this.exportImage());
+                elements.fullscreen.addEventListener('click', () => this.toggleFullscreen());
+                
+                // Legend visibility toggles
+                const legendItems = document.querySelectorAll('.legend-item');
+                legendItems.forEach((item, index) => {
+                    const types = ['exp1', 'exp2', 'result'];
+                    item.addEventListener('click', () => this.toggleVisibility(types[index]));
+                    item.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            this.toggleVisibility(types[index]);
+                        }
+                    });
+                });
+            }
+            
+            setupEventListeners() {
+                // Enhanced camera controls
+                const canvas = this.renderer.domElement;
+                
+                // Mouse controls
+                canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
+                canvas.addEventListener('mouseup', () => this.onMouseUp());
+                canvas.addEventListener('mouseleave', () => this.onMouseUp());
+                canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
+                canvas.addEventListener('wheel', (e) => this.onWheel(e));
+                
+                // Touch controls for mobile
+                canvas.addEventListener('touchstart', (e) => this.onTouchStart(e));
+                canvas.addEventListener('touchend', () => this.onTouchEnd());
+                canvas.addEventListener('touchmove', (e) => this.onTouchMove(e));
+                
+                // Keyboard controls
+                document.addEventListener('keydown', (e) => this.onKeyDown(e));
+                
+                // Window resize
+                window.addEventListener('resize', () => this.onWindowResize());
+                
+                // Visibility change (for performance optimization)
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) {
+                        this.pauseAnimation();
+                    } else {
+                        this.resumeAnimation();
+                    }
+                });
+            }
+            
+            onMouseDown(e) {
+                this.mouseControls.mouseDown = true;
+                this.mouseControls.mouseX = e.clientX;
+                this.mouseControls.mouseY = e.clientY;
+                this.renderer.domElement.style.cursor = 'grabbing';
+            }
+            
+            onMouseUp() {
+                this.mouseControls.mouseDown = false;
+                this.renderer.domElement.style.cursor = 'grab';
+            }
+            
+            onMouseMove(e) {
+                if (!this.mouseControls.mouseDown) return;
+                
+                const deltaX = e.clientX - this.mouseControls.mouseX;
+                const deltaY = e.clientY - this.mouseControls.mouseY;
+                
+                this.rotateCamera(deltaX, deltaY);
+                
+                this.mouseControls.mouseX = e.clientX;
+                this.mouseControls.mouseY = e.clientY;
+            }
+            
+            onWheel(e) {
+                const zoomSpeed = 0.1;
+                const direction = e.deltaY > 0 ? 1 : -1;
+                
+                this.camera.position.multiplyScalar(1 + direction * zoomSpeed);
+                
+                // Limit zoom
+                const distance = this.camera.position.length();
+                if (distance < 5) {
+                    this.camera.position.normalize().multiplyScalar(5);
+                } else if (distance > 50) {
+                    this.camera.position.normalize().multiplyScalar(50);
+                }
+                
+                e.preventDefault();
+            }
+            
+            onTouchStart(e) {
+                if (e.touches.length === 1) {
+                    this.mouseControls.mouseDown = true;
+                    this.mouseControls.mouseX = e.touches[0].clientX;
+                    this.mouseControls.mouseY = e.touches[0].clientY;
+                }
+            }
+            
+            onTouchEnd() {
+                this.mouseControls.mouseDown = false;
+            }
+            
+            onTouchMove(e) {
+                if (!this.mouseControls.mouseDown || e.touches.length !== 1) return;
+                
+                const deltaX = e.touches[0].clientX - this.mouseControls.mouseX;
+                const deltaY = e.touches[0].clientY - this.mouseControls.mouseY;
+                
+                this.rotateCamera(deltaX, deltaY);
+                
+                this.mouseControls.mouseX = e.touches[0].clientX;
+                this.mouseControls.mouseY = e.touches[0].clientY;
+                
+                e.preventDefault();
+            }
+            
+            onKeyDown(e) {
+                switch (e.key) {
+                    case ' ':
+                        e.preventDefault();
+                        this.togglePlayPause();
+                        break;
+                    case 'r':
+                    case 'R':
+                        this.reset();
+                        break;
+                    case 't':
+                    case 'T':
+                        this.toggleTheme();
+                        break;
+                    case 'f':
+                    case 'F':
+                        this.toggleFullscreen();
+                        break;
+                    case '1':
+                        this.switchFunction('sin');
+                        break;
+                    case '2':
+                        this.switchFunction('cos');
+                        break;
+                    case '3':
+                        this.switchFunction('tan');
+                        break;
+                    case '4':
+                        this.switchFunction('exp1');
+                        break;
+                    case '5':
+                        this.switchFunction('exp2');
+                        break;
+                    case 'o':
+                    case 'O':
+                        // Toggle options panel with 'O' key
+                        document.getElementById('options-button').click();
+                        break;
+                }
+            }
+            
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            }
+            
+            rotateCamera(deltaX, deltaY) {
+                const spherical = new THREE.Spherical();
+                spherical.setFromVector3(this.camera.position);
+                spherical.theta -= deltaX * 0.01;
+                spherical.phi += deltaY * 0.01;
+                spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
+                
+                this.camera.position.setFromSpherical(spherical);
+                this.camera.lookAt(0, 0, 0);
+            }
+            
+            togglePlayPause() {
+                this.isPlaying = !this.isPlaying;
+                const playIcon = document.getElementById('playIcon');
+                const playText = document.getElementById('playText');
+                
+                playIcon.textContent = this.isPlaying ? '⏸️' : '▶️';
+                playText.textContent = this.isPlaying ? 'Pause' : 'Play';
+                
+                // Visual feedback
+                const btn = document.getElementById('playPause');
+                btn.style.transform = 'scale(0.95)';
+                setTimeout(() => btn.style.transform = '', 150);
+            }
+            
+            reset() {
+                this.time = 0;
+                const btn = document.getElementById('reset');
+                btn.style.transform = 'scale(0.95)';
+                setTimeout(() => btn.style.transform = '', 150);
+            }
+            
+            exportImage() {
+                const link = document.createElement('a');
+                link.download = `exponenciais_complexas_${this.currentFunction}_${Date.now()}.png`;
+                link.href = this.renderer.domElement.toDataURL();
+                link.click();
+            }
+            
+            toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else {
+                    document.exitFullscreen();
+                }
+            }
+            
+            pauseAnimation() {
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                    this.animationId = null;
+                }
+            }
+            
+            resumeAnimation() {
+                if (!this.animationId) {
+                    this.animate();
+                }
+            }
+            
+            updateScene() {
+                const theta = this.time;
+                const z = theta * 2.5;
+                const radius = 4;
+                
+                // Calculate exponential values with amplitude and frequency
+                const exp1Real = Math.cos(theta * this.frequency) * radius * this.amplitude;
+                const exp1Imag = Math.sin(theta * this.frequency) * radius * this.amplitude;
+                const exp2Real = Math.cos(-theta * this.frequency) * radius * this.amplitude;
+                const exp2Imag = Math.sin(-theta * this.frequency) * radius * this.amplitude;
+                
+                // Calculate result based on selected function
+                let resultValue, resultReal, resultImag;
+                switch (this.currentFunction) {
+                    case 'sin':
+                        resultValue = Math.sin(theta * this.frequency) * radius * this.amplitude;
+                        break;
+                    case 'cos':
+                        resultValue = Math.cos(theta * this.frequency) * radius * this.amplitude;
+                        break;
+                    case 'tan':
+                        resultValue = Math.tan(theta * this.frequency) * radius * this.amplitude * 0.5;
+                        resultValue = Math.max(-radius * 2, Math.min(radius * 2, resultValue));
+                        break;
+                    case 'exp1':
+                        resultReal = exp1Real;
+                        resultImag = exp1Imag;
+                        break;
+                    case 'exp2':
+                        resultReal = exp2Real;
+                        resultImag = exp2Imag;
+                        break;
+                    default:
+                        resultValue = Math.sin(theta * this.frequency) * radius * this.amplitude;
+                }
+                
+                // Update point positions
+                if (this.objects.exp1Point) {
+                    this.objects.exp1Point.position.set(exp1Real, exp1Imag, z);
+                    if (this.objects.exp1Point.children[0]) {
+                        this.objects.exp1Point.children[0].rotation.z += 0.02;
+                    }
+                }
+                
+                if (this.objects.exp2Point) {
+                    this.objects.exp2Point.position.set(exp2Real, exp2Imag, z);
+                    if (this.objects.exp2Point.children[0]) {
+                        this.objects.exp2Point.children[0].rotation.z -= 0.02;
+                    }
+                }
+                
+                if (this.objects.resultPoint) {
+                    if (this.currentFunction === 'exp1' || this.currentFunction === 'exp2') {
+                        // Para exponenciais, o ponto resultado segue a exponencial selecionada
+                        this.objects.resultPoint.position.set(resultReal, resultImag, z);
+                    } else {
+                        // Para funções trigonométricas, plotar no plano θ vs f(θ)
+                        this.objects.resultPoint.position.set(z, resultValue, 0);
+                    }
+                    if (this.objects.resultPoint.children[0]) {
+                        this.objects.resultPoint.children[0].rotation.z += 0.01;
+                    }
+                }
+                
+                // Update connecting lines
+                this.updateLine(this.objects.exp1Line, new THREE.Vector3(0, 0, z), new THREE.Vector3(exp1Real, exp1Imag, z));
+                this.updateLine(this.objects.exp2Line, new THREE.Vector3(0, 0, z), new THREE.Vector3(exp2Real, exp2Imag, z));
+                
+                if (this.currentFunction === 'exp1' || this.currentFunction === 'exp2') {
+                    this.updateLine(this.objects.resultLine, new THREE.Vector3(0, 0, z), new THREE.Vector3(resultReal, resultImag, z));
+                } else {
+                    this.updateLine(this.objects.resultLine, new THREE.Vector3(z, 0, 0), new THREE.Vector3(z, resultValue, 0));
+                }
+                
+                // Update UI
+                this.updateUI(theta, exp1Real, exp1Imag, exp2Real, exp2Imag, resultValue, resultReal, resultImag, radius);
+            }
+            
+            updateLine(line, start, end) {
+                if (!line) return;
+                
+                const curve = new THREE.CatmullRomCurve3([start, end]);
+                const geometry = new THREE.TubeGeometry(curve, 10, line.geometry.parameters.radius || 0.02, 8, false);
+                line.geometry.dispose();
+                line.geometry = geometry;
+            }
+            
+            updateUI(theta, exp1Real, exp1Imag, exp2Real, exp2Imag, resultValue, resultReal, resultImag, radius) {
+                const angleInDegrees = (theta * 180 / Math.PI) % 360;
+                
+                // Update display values
+                document.getElementById('angleValue').textContent = angleInDegrees.toFixed(1) + '°';
+                document.getElementById('exp1Value').textContent = 
+                    `${(exp1Real/radius).toFixed(2)} + ${(exp1Imag/radius).toFixed(2)}j`;
+                document.getElementById('exp2Value').textContent = 
+                    `${(exp2Real/radius).toFixed(2)} + ${(exp2Imag/radius).toFixed(2)}j`;
+                
+                // Update result value based on current function
+                if (this.currentFunction === 'exp1') {
+                    document.getElementById('resultValue').textContent = 
+                        `${(resultReal/radius).toFixed(2)} + ${(resultImag/radius).toFixed(2)}j`;
+                } else if (this.currentFunction === 'exp2') {
+                    document.getElementById('resultValue').textContent = 
+                        `${(resultReal/radius).toFixed(2)} + ${(resultImag/radius).toFixed(2)}j`;
+                } else {
+                    document.getElementById('resultValue').textContent = (resultValue/radius).toFixed(3);
+                }
+            }
+            
+            updatePerformanceMonitor() {
+                this.performanceMonitor.frameCount++;
+                const now = performance.now();
+                
+                if (now >= this.performanceMonitor.lastTime + 1000) {
+                    this.performanceMonitor.fps = Math.round(
+                        (this.performanceMonitor.frameCount * 1000) / (now - this.performanceMonitor.lastTime)
+                    );
+                    this.performanceMonitor.frameCount = 0;
+                    this.performanceMonitor.lastTime = now;
+                    
+                    // Adjust quality based on performance
+                    if (this.performanceMonitor.fps < 30) {
+                        this.renderer.setPixelRatio(1);
+                    } else if (this.performanceMonitor.fps > 50) {
+                        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                    }
+                }
+            }
+            
+            animate() {
+                this.animationId = requestAnimationFrame(() => this.animate());
+                
+                if (this.isPlaying) {
+                    this.time += 0.025 * this.speed;
+                    if (this.time > 4 * Math.PI) this.time = 0;
+                }
+                
+                // NEW: Update axes based on camera distance
+                const cameraDistance = this.camera.position.length();
+                const newAxisLength = Math.max(15, Math.min(50, cameraDistance * 1.2));
+                
+                // Only recreate axes if the length changed significantly
+                if (Math.abs(newAxisLength - this.currentAxisLength) > 2) {
+                    this.createAxes(newAxisLength);
+                }
+                
+                this.updateScene();
+                this.updatePerformanceMonitor();
+                
+                // Subtle camera movement
+                const baseRadius = this.camera.position.length();
+                this.camera.position.y += Math.sin(this.time * 0.1) * 0.02;
+                this.camera.position.normalize().multiplyScalar(baseRadius);
+                this.camera.lookAt(0, 0, 0);
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+            
+            hideLoadingScreen() {
+                const loadingScreen = document.getElementById('loading-screen');
+                if (loadingScreen) {
+                    loadingScreen.style.opacity = '0';
+                    setTimeout(() => {
+                        loadingScreen.remove();
+                    }, 300);
+                }
+            }
+            
+            showError(message) {
+                const container = document.getElementById('container');
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error';
+                errorDiv.textContent = message;
+                errorDiv.style.position = 'fixed';
+                errorDiv.style.top = '50%';
+                errorDiv.style.left = '50%';
+                errorDiv.style.transform = 'translate(-50%, -50%)';
+                errorDiv.style.zIndex = '1001';
+                container.appendChild(errorDiv);
+                
+                // Hide loading screen
+                this.hideLoadingScreen();
+            }
+        }
+        
+        // Initialize the application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check for WebGL support
+            if (!window.WebGLRenderingContext) {
+                document.getElementById('loading-screen').innerHTML = 
+                    '<div class="error">WebGL não é suportado neste navegador.</div>';
+                return;
+            }
+            
+            // Initialize the visualizer
+            try {
+                new ComplexExponentialVisualizer();
+            } catch (error) {
+                console.error('Erro ao inicializar:', error);
+                document.getElementById('loading-screen').innerHTML = 
+                    '<div class="error">Erro ao carregar a visualização: ' + error.message + '</div>';
+            }
+        });
+        
+        // Service Worker registration for offline support
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => console.log('SW registered'))
+                    .catch(registrationError => console.log('SW registration failed'));
+            });
+        }
+    </script>
+</body>
+</html>
+
